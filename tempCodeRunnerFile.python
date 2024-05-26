@@ -1,0 +1,74 @@
+import speech_recognition as sr
+import os
+
+# Initialize recognizer class (for recognizing the speech)
+recognizer = sr.Recognizer()
+
+# Function to recognize speech using microphone
+def recognize_speech_from_mic(recognizer, microphone):
+    # Check that recognizer and microphone arguments are appropriate type
+    if not isinstance(recognizer, sr.Recognizer):
+        raise TypeError("`recognizer` must be `Recognizer` instance")
+    if not isinstance(microphone, sr.Microphone):
+        raise TypeError("`microphone` must be `Microphone` instance")
+
+    # Adjust the recognizer sensitivity to ambient noise
+    with microphone as source:
+        recognizer.adjust_for_ambient_noise(source)
+        print("Listening...")
+        audio = recognizer.listen(source)
+
+    # Transcribe speech to text
+    response = {
+        "success": True,
+        "error": None,
+        "transcription": None
+    }
+
+    try:
+        response["transcription"] = recognizer.recognize_google(audio)
+    except sr.RequestError:
+        # API was unreachable or unresponsive
+        response["success"] = False
+        response["error"] = "API unavailable/unresponsive"
+    except sr.UnknownValueError:
+        # Speech was unintelligible
+        response["error"] = "Unable to recognize speech"
+
+    return response
+
+# Define trigger words and corresponding actions
+TRIGGER_WORDS = {
+    "calculator": "start calc",  # Opens Calculator
+    "notepad": "start notepad",  # Opens Notepad
+    "browser": "start chrome"    # Opens Chrome Browser
+}
+
+# Main function
+def main():
+    recognizer = sr.Recognizer()
+    microphone = sr.Microphone()
+
+    while True:
+        print("Say a command!")
+        result = recognize_speech_from_mic(recognizer, microphone)
+        if result["transcription"]:
+            print("You said: {}".format(result["transcription"]))
+            words = result["transcription"].lower().split()
+            for word in words:
+                if word in TRIGGER_WORDS:
+                    print(f"Trigger word '{word}' detected. Executing action...")
+                    os.system(TRIGGER_WORDS[word])
+                    break
+        if not result["success"]:
+            print("I didn't catch that. What did you say?\n")
+        if result["error"]:
+            print("ERROR: {}".format(result["error"]))
+
+        # Optionally, break the loop if a specific word is detected
+        if result["transcription"] and "stop" in result["transcription"].lower():
+            print("Exiting...")
+            break
+
+if __name__ == "__main__":
+    main()
